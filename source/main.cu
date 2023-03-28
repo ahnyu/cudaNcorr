@@ -11,27 +11,31 @@
 #include <cuda_runtime.h>
 #include <vector>
 #include <vector_types.h>
-#include "../include/CudaNcorr.hpp"
+#include "../include/cudaNcorr.hpp"
+#include "../include/utils.hpp"
+#include "../include/survey.hpp"
 
 
 int main() {
-    std::vector<float> r_bins;
-    for (float i=0.0f; i<=32.0f; i+=1.0f) {
-        r_bins.push_back(i);
+    std::vector<double> bins;
+    for (double i=0.0f; i<=32.0f; i+=1.0f) {
+        bins.push_back(i);
     }
-    float3 box_size={1024.f,1024.f,1024.f};
+    double3 box={1024.f,1024.f,1024.f};
 
-    ncorr corr(r_bins,box_size);
 
-    std::string inpath = "/global/homes/h/hanyuz/cudaNcorr/LNKNLogsVelFortran_01.dat";
-    std::vector<float3> p1 = corr.readCatalogFromFile(inpath);
-    std::vector<float3> p2 = corr.readCatalogFromFile(inpath);
-    std::vector<float3> p3 = corr.readCatalogFromFile(inpath);
+    std::string inpath = "/global/homes/h/hanyuz/cudaNcorr/data/testData.txt";
+    std::vector<double4> p1 = readCatalogTxt(inpath,box,{0,1,2,3});
+    std::vector<double4> p2 = readCatalogTxt(inpath,box,{0,1,2,3});
+    std::vector<double4> p3 = readCatalogTxt(inpath,box,{0,1,2,3});
 
+    ncorr corr(bins,box);
     corr.calculateD1D2D3(p1, p2, p3);
 
     std::string outpath = "/global/homes/h/hanyuz/cudaNcorr/DDDtest.dat";
-    corr.writeToFile(outpath,corr.triBins,corr.triCountsOut);
+    std::vector<double3> triBins = corr.getTriBins();
+    std::vector<double> triCountsOut = corr.getTriCountsOut();
+    writeToFile(outpath,triBins,triCountsOut);
 
 
     return 0;
