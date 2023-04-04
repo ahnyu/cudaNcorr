@@ -12,6 +12,20 @@
 #include <omp.h>
 #include <../include/utils.hpp>
 
+
+std::vector<double> logspace(double start, double end, int Nedge) {
+    double start_log = std::log10(start);
+    double end_log = std::log10(end);
+    double step = (end_log - start_log) / (Nedge - 1);
+
+    std::vector<double> logspace_vector(Nedge);
+    for (int i = 0; i < Nedge; ++i) {
+        logspace_vector[i] = std::pow(10, start_log + i * step);
+    }
+
+    return logspace_vector;
+}
+
 double4 generateRandomPosition(std::mt19937& gen, const double3 &box) {
     std::uniform_real_distribution<double> distx(0, box.x);
     std::uniform_real_distribution<double> disty(0, box.y);
@@ -40,7 +54,9 @@ std::vector<double4> generateRandomCatalog(int Np, const double3 &box) {
 std::vector<double4> readCatalogFits(
     const std::string& filename, 
     const std::vector<std::string>& column_names, 
-    int hdu_index
+    int hdu_index,
+    double zmin,
+    double zmax
 ) {
     std::vector<double4> result;
 
@@ -80,18 +96,18 @@ std::vector<double4> readCatalogFits(
                 throw std::runtime_error("Error finding column named " + column_names[j]);
             }
 
-            if (fits_read_col(fptr, TFLOAT, col, i, 1, 1, NULL, &value, NULL, &status)) {
+            if (fits_read_col(fptr, TDOUBLE, col, i, 1, 1, NULL, &value, NULL, &status)) {
                 fits_close_file(fptr, &status);
                 throw std::runtime_error("Error reading FITS file data.");
             }
-
             if (column_names[j] == "RA") temp.x = value;
             else if (column_names[j] == "DEC") temp.y = value;
             else if (column_names[j] == "Z") temp.z = value;
             else if (column_names[j] == "WEIGHT") temp.w = value;
         }
-
-        result.push_back(temp);
+        if (temp.z > zmin && temp.z < zmax) {
+            result.push_back(temp);
+        }
     }
 
     fits_close_file(fptr, &status);
@@ -142,7 +158,7 @@ std::vector<double4> readCatalogTxt(
     return result;
 }
 
-void writeToFile(
+void writeToFileThreeD(
     const std::string& filename, 
     const std::vector<double3>& double3_vec, 
     const std::vector<double>& double_vec
@@ -161,6 +177,31 @@ void writeToFile(
                         
     for (size_t i = 0; i < double3_vec.size(); ++i) {
         output_file << double3_vec[i].x << " " << double3_vec[i].y << " " << double3_vec[i].z << " " << double_vec[i] << std::endl;
+    }                   
+     
+    output_file.close();
+}
+
+void writeToFileRppi(
+    const std::string& filename, 
+    const std::vector<double3>& double3_vec, 
+    const std::vector<double2>& double2_vec, 
+    const std::vector<double>& double_vec
+) {
+    if (double3_vec.size() != double_vec.size() || double3_vec.size() != double2_vec.size() ||double_vec.size() != double2_vec.size()) {
+        throw std::runtime_error("Vectors have different sizes.");
+    }           
+                
+    std::ofstream output_file(filename);
+        
+    if (!output_file.is_open()) {
+        throw std::runtime_error("Unable to open file: " + filename);
+    }               
+
+    output_file << std::fixed << std::setprecision(6);
+                        
+    for (size_t i = 0; i < double3_vec.size(); ++i) {
+        output_file << double3_vec[i].x << " " << double3_vec[i].y << " " << double3_vec[i].z << " " << double2_vec[i].x << " " << double2_vec[i].y << " " << double_vec[i] << std::endl;
     }                   
      
     output_file.close();

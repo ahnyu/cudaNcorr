@@ -8,8 +8,10 @@ SRC_DIR := source
 OBJ_DIR := obj
 INC_DIR := include
 
-SRCS := $(wildcard $(SRC_DIR)/*.cu)
+SRCS := $(SRC_DIR)/device.cu $(SRC_DIR)/utils.cu $(SRC_DIR)/survey.cu $(SRC_DIR)/cudaNcorr.cu $(SRC_DIR)/main.cu
+
 OBJS := $(patsubst $(SRC_DIR)/%.cu, $(OBJ_DIR)/%.o, $(SRCS))
+DLNK := $(OBJ_DIR)/link.o
 
 TARGET := cudaNcorr
 
@@ -17,11 +19,14 @@ TARGET := cudaNcorr
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
+$(TARGET): $(DLNK) $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@ $(CFITSIO_LIB)
 
+$(DLNK): $(OBJS)
+	$(CC) -arch=sm_80 -dlink $^ -o $@
+
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cu $(wildcard $(INC_DIR)/*.hpp)
-	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@ $(CFITSIO_INC)
+	$(CC) $(CFLAGS) $(INCLUDE) -dc $< -o $@ $(CFITSIO_INC)
 
 clean:
 	rm -f $(OBJ_DIR)/*.o $(TARGET)
